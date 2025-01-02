@@ -1,5 +1,5 @@
-"use client"
 import React, { useState, useEffect } from 'react';
+import Image from 'next/image';
 import { 
   Card, 
   CardHeader,
@@ -11,8 +11,36 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { ShoppingCart, Plus, Minus, X } from 'lucide-react';
 
-// Sample data - replace this with Sanity data later
-const dummyProducts = [
+interface Product {
+  id: string;
+  name: string;
+  price: number;
+  description: string;
+  category: string;
+  stock: number;
+  image: string;
+}
+
+interface ProductCardProps {
+  product: Product;
+  onAddToCart: (product: Product) => void;
+  onViewDetails: (product: Product) => void;
+}
+
+interface ProductDetailsProps {
+  product: Product;
+  onClose: () => void;
+  onAddToCart: (product: Product) => void;
+}
+
+interface CartProps {
+  items: Record<string, number>;
+  products: Product[];
+  onUpdateQuantity: (productId: string, quantity: number) => void;
+}
+
+// Sample data
+const dummyProducts: Product[] = [
   {
     id: '1',
     name: 'Wireless Headphones',
@@ -42,15 +70,16 @@ const dummyProducts = [
   }
 ];
 
-const ProductCard = ({ product, onAddToCart, onViewDetails }) => {
+const ProductCard: React.FC<ProductCardProps> = ({ product, onAddToCart, onViewDetails }) => {
   return (
     <Card className="flex flex-col h-full">
       <CardHeader>
         <div className="relative w-full h-48 mb-4">
-          <img
+          <Image
             src={product.image}
             alt={product.name}
-            className="object-cover rounded-lg w-full h-full"
+            fill
+            className="object-cover rounded-lg"
           />
         </div>
         <CardTitle className="text-xl">{product.name}</CardTitle>
@@ -83,9 +112,7 @@ const ProductCard = ({ product, onAddToCart, onViewDetails }) => {
   );
 };
 
-const ProductDetails = ({ product, onClose, onAddToCart }) => {
-  if (!product) return null;
-
+const ProductDetails: React.FC<ProductDetailsProps> = ({ product, onClose, onAddToCart }) => {
   return (
     <div className="fixed inset-0 bg-black/50 flex items-center justify-center p-4 z-50">
       <Card className="w-full max-w-2xl">
@@ -97,10 +124,11 @@ const ProductDetails = ({ product, onClose, onAddToCart }) => {
         </CardHeader>
         <CardContent>
           <div className="relative w-full h-64 mb-4">
-            <img
+            <Image
               src={product.image}
               alt={product.name}
-              className="object-cover rounded-lg w-full h-full"
+              fill
+              className="object-cover rounded-lg"
             />
           </div>
           <div className="space-y-4">
@@ -133,11 +161,14 @@ const ProductDetails = ({ product, onClose, onAddToCart }) => {
   );
 };
 
-const Cart = ({ items, products, onUpdateQuantity }) => {
+const Cart: React.FC<CartProps> = ({ items, products, onUpdateQuantity }) => {
   const getTotalPrice = () => {
     return Object.entries(items).reduce((total, [productId, quantity]) => {
       const product = products.find(p => p.id === productId);
-      return total + (product.price * quantity);
+      if (product) {
+        return total + (product.price * quantity);
+      }
+      return total;
     }, 0);
   };
 
@@ -156,6 +187,7 @@ const Cart = ({ items, products, onUpdateQuantity }) => {
           <div className="space-y-4">
             {Object.entries(items).map(([productId, quantity]) => {
               const product = products.find(p => p.id === productId);
+              if (!product) return null;
               return (
                 <div key={productId} className="flex justify-between items-center">
                   <div>
@@ -177,7 +209,7 @@ const Cart = ({ items, products, onUpdateQuantity }) => {
                       size="sm" 
                       variant="outline"
                       onClick={() => onUpdateQuantity(productId, quantity + 1)}
-                      disabled={quantity >= product.stock}
+                      disabled={quantity >= (product?.stock ?? 0)}
                     >
                       <Plus className="h-4 w-4" />
                     </Button>
@@ -203,10 +235,10 @@ const Cart = ({ items, products, onUpdateQuantity }) => {
   );
 };
 
-const EcommerceApp = () => {
-  const [products, setProducts] = useState([]);
-  const [cart, setCart] = useState({});
-  const [selectedProduct, setSelectedProduct] = useState(null);
+const EcommerceApp: React.FC = () => {
+  const [products, setProducts] = useState<Product[]>([]);
+  const [cart, setCart] = useState<Record<string, number>>({});
+  const [selectedProduct, setSelectedProduct] = useState<Product | null>(null);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -217,14 +249,14 @@ const EcommerceApp = () => {
     }, 1000);
   }, []);
 
-  const handleAddToCart = (product) => {
+  const handleAddToCart = (product: Product) => {
     setCart(prev => ({
       ...prev,
       [product.id]: (prev[product.id] || 0) + 1
     }));
   };
 
-  const handleUpdateCartQuantity = (productId, newQuantity) => {
+  const handleUpdateCartQuantity = (productId: string, newQuantity: number) => {
     setCart(prev => {
       const updated = { ...prev };
       if (newQuantity <= 0) {
